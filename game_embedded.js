@@ -1200,7 +1200,8 @@ class MammalMysteryGame {
                 name: mammal.common_name || mammal.scientific_name,
                 id: mammal.id,
                 dist: score,
-                isTarget: mammal.id === target.id
+                isTarget: mammal.id === target.id,
+                isGuessed: false
             });
         }
         // Debug: log speciesData to help diagnose empty chart
@@ -1213,6 +1214,33 @@ class MammalMysteryGame {
                 dist: 100,
                 isTarget: true
             });
+        }
+        // Include any species that were guessed during the round but not in the original options
+        const guessedIdsFromSet = new Set(Array.isArray(this.guessedIds) ? this.guessedIds : (Array.isArray(this.guesses) ? this.guesses.map(g => g.mammal && g.mammal.id).filter(Boolean) : []));
+        // Mark existing entries as guessed where appropriate
+        speciesData.forEach(s => { s.isGuessed = guessedIdsFromSet.has(s.id) || !!s.isGuessed; });
+        if (Array.isArray(this.guesses)) {
+            for (const g of this.guesses) {
+                if (!g || !g.mammal || !g.mammal.id) continue;
+                const id = g.mammal.id;
+                if (!speciesData.find(x => x.id === id)) {
+                    // compute distance for guessed species (if possible)
+                    let dist = null;
+                    try {
+                        const metrics = this.phyloCalculator.getPhylogeneticDistance(target.scientific_name, g.mammal.scientific_name);
+                        dist = metrics ? this.phyloCalculator.distanceToScore(metrics.effective) : null;
+                    } catch (e) {
+                        dist = null;
+                    }
+                    speciesData.push({
+                        name: g.mammal.common_name || g.mammal.scientific_name,
+                        id: id,
+                        dist: dist,
+                        isTarget: id === target.id,
+                        isGuessed: true
+                    });
+                }
+            }
         }
         // Sort by score descending (higher = closer)
         const sorted = speciesData.filter(x => x.dist !== null).sort((a, b) => b.dist - a.dist);
@@ -1462,6 +1490,7 @@ class MammalMysteryGame {
         const rawName = nodeData.data && nodeData.data.name ? nodeData.data.name : '';
         const normalized = this.normalizeTreeLabel(rawName);
         const mammal = this.getMammalForTreeLabel(rawName);
+        const isGuessed = mammal && ( (this.guessedIds && this.guessedIds.has && this.guessedIds.has(mammal.id)) || (Array.isArray(this.guesses) && this.guesses.some(g => g.mammal && g.mammal.id === mammal.id)) );
 
         const textSelection = group.select('text');
         if (!textSelection.empty()) {
@@ -1509,7 +1538,9 @@ class MammalMysteryGame {
 
         if (targetLabel && normalized === targetLabel) {
             group.classed('round-tree-target', true);
-        } else if (bestLabel && normalized === bestLabel) {
+        }
+        // Mark best guess or any guessed nodes (but do not mark target as a guess)
+        if (!(targetLabel && normalized === targetLabel) && ((bestLabel && normalized === bestLabel) || isGuessed)) {
             group.classed('round-tree-guess', true);
         }
     }
@@ -1636,6 +1667,7 @@ class MammalMysteryGame {
         const targetLabel = this.currentTarget ? this.normalizeTreeLabel(this.currentTarget.scientific_name) : null;
         const bestGuess = this.getStrongestGuess();
         const bestLabel = bestGuess ? this.normalizeTreeLabel(bestGuess.mammal.scientific_name) : null;
+        const guessedSet = new Set(Array.isArray(this.guessedIds) ? this.guessedIds : (Array.isArray(this.guesses) ? this.guesses.map(g => g.mammal && g.mammal.id).filter(Boolean) : []));
 
         nodes.forEach(node => {
             node.x = padding.left + node.rawDepth * scaleX;
@@ -1649,6 +1681,7 @@ class MammalMysteryGame {
             node.isTarget = node.isLeaf && targetLabel && normalizedNodeLabel === targetLabel;
             const isBestGuess = node.isLeaf && bestLabel && normalizedNodeLabel === bestLabel;
             node.isBestGuess = isBestGuess && !(node.isTarget && targetLabel && bestLabel && targetLabel === bestLabel);
+            node.isGuessed = node.isLeaf && mammal && guessedSet.has(mammal.id);
         });
 
         const svgNS = 'http://www.w3.org/2000/svg';
@@ -1676,7 +1709,7 @@ class MammalMysteryGame {
             if (node.isTarget) {
                 circleClasses.push('target');
             }
-            if (node.isBestGuess) {
+            if (node.isBestGuess || node.isGuessed) {
                 circleClasses.push('guess');
             }
             circle.setAttribute('class', circleClasses.join(' '));
@@ -1693,7 +1726,7 @@ class MammalMysteryGame {
                 if (node.isTarget) {
                     textClasses.push('target');
                 }
-                if (node.isBestGuess) {
+                if (node.isBestGuess || node.isGuessed) {
                     textClasses.push('guess');
                 }
                 text.setAttribute('class', textClasses.join(' '));
