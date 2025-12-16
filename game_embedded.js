@@ -1219,7 +1219,15 @@ class MammalMysteryGame {
         const sortedSpecies = sorted.map(x => x.name);
         const sortedDistances = sorted.map(x => x.dist);
         const sortedIds = sorted.map(x => x.id);
+        // Mark which species were guessed during the round
+        const guessedSet = new Set(Array.isArray(this.guessedIds) ? this.guessedIds : (Array.isArray(this.guesses) ? this.guesses.map(g => g.mammal && g.mammal.id).filter(Boolean) : []));
         const sortedIsTarget = sorted.map(x => x.isTarget);
+        const sortedIsGuessed = sorted.map(x => guessedSet.has(x.id));
+
+        // Expose labels used for tree styling so phylotree/fallback can mark target/guess nodes
+        this.latestTargetLabel = this.currentTarget ? this.normalizeTreeLabel(this.currentTarget.scientific_name) : null;
+        const strongest = this.getStrongestGuess();
+        this.latestBestGuessLabel = strongest && strongest.mammal ? this.normalizeTreeLabel(strongest.mammal.scientific_name) : null;
 
         // D3.js horizontal bar chart implementation
         // Remove any previous chart
@@ -1229,21 +1237,22 @@ class MammalMysteryGame {
         if (!window.d3) {
             const script = document.createElement('script');
             script.src = 'https://d3js.org/d3.v7.min.js';
-            script.onload = () => this.drawD3DistanceHistogram(sortedSpecies, sortedDistances, sortedIds, sortedIsTarget, container);
+            script.onload = () => this.drawD3DistanceHistogram(sortedSpecies, sortedDistances, sortedIds, sortedIsTarget, sortedIsGuessed, container);
             container.appendChild(script);
             return;
         }
-        this.drawD3DistanceHistogram(sortedSpecies, sortedDistances, sortedIds, sortedIsTarget, container);
+        this.drawD3DistanceHistogram(sortedSpecies, sortedDistances, sortedIds, sortedIsTarget, sortedIsGuessed, container);
     }
 
-    drawD3DistanceHistogram(species, distances, ids, isTargetArr, container) {
+    drawD3DistanceHistogram(species, distances, ids, isTargetArr, isGuessedArr, container) {
         // D3 horizontal bar chart with clickable bars and labels
         const d3 = window.d3;
         const data = species.map((name, i) => ({
             name,
             value: distances[i],
             id: ids[i],
-            isTarget: isTargetArr[i]
+            isTarget: isTargetArr[i],
+            isGuessed: Array.isArray(isGuessedArr) ? !!isGuessedArr[i] : false
         }));
         // Increase left margin for longer labels and move chart right
         const margin = { top: 40, right: 30, bottom: 40, left: 340 };
@@ -1271,6 +1280,11 @@ class MammalMysteryGame {
 
         // Color function
         function barColor(d) {
+            // Target highlighted in red hues
+            if (d.isTarget) return 'rgba(255,99,132,0.85)';
+            // Guessed entries get a distinctive blue tint
+            if (d.isGuessed) return 'rgba(33,150,243,0.85)';
+            // Otherwise color by similarity
             if (d.value === 100) return 'rgba(255,99,132,0.7)';
             if (d.value >= 70) return 'rgba(76,175,80,0.7)';
             if (d.value >= 40) return 'rgba(255,193,7,0.7)';
@@ -1282,7 +1296,7 @@ class MammalMysteryGame {
             .data(data)
             .enter()
             .append('rect')
-            .attr('class', 'bar')
+            .attr('class', d => d.isGuessed ? 'bar guessed' : 'bar')
             .attr('x', x(0))
             .attr('y', d => y(d.name))
             .attr('width', d => x(d.value) - x(0))
@@ -1298,6 +1312,7 @@ class MammalMysteryGame {
                 }
             })
             .on('mouseover', function(event, d) {
+                // subtle hover effect
                 d3.select(this).attr('fill', 'orange');
             })
             .on('mouseout', function(event, d) {
@@ -1315,8 +1330,8 @@ class MammalMysteryGame {
             .attr('text-anchor', 'end')
             .attr('alignment-baseline', 'middle')
             .attr('font-size', '16px')
-            .attr('font-weight', d => d.isTarget ? 'bold' : 'normal')
-            .attr('fill', d => d.isTarget ? '#d32f2f' : 'inherit')
+            .attr('font-weight', d => d.isTarget || d.isGuessed ? 'bold' : 'normal')
+            .attr('fill', d => d.isTarget ? '#d32f2f' : (d.isGuessed ? '#1565c0' : 'inherit'))
             .attr('cursor', 'pointer')
             .style('pointer-events', 'all')
             .text(d => d.name)
