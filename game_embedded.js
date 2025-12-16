@@ -1204,8 +1204,10 @@ class MammalMysteryGame {
                 isGuessed: false
             });
         }
-        // Debug: log speciesData to help diagnose empty chart
-        console.log('Histogram speciesData:', speciesData);
+        // If guessedIds is a Set, use it; otherwise fall back to guesses array
+        const guessedIdsFromSet = (this.guessedIds && typeof this.guessedIds.has === 'function')
+            ? new Set([...this.guessedIds])
+            : (Array.isArray(this.guessedIds) ? new Set(this.guessedIds) : (Array.isArray(this.guesses) ? new Set(this.guesses.map(g => g.mammal && g.mammal.id).filter(Boolean)) : new Set()));
         // Add the target species itself if not present
         if (!speciesData.find(x => x.isTarget)) {
             speciesData.push({
@@ -1216,7 +1218,6 @@ class MammalMysteryGame {
             });
         }
         // Include any species that were guessed during the round but not in the original options
-        const guessedIdsFromSet = new Set(Array.isArray(this.guessedIds) ? this.guessedIds : (Array.isArray(this.guesses) ? this.guesses.map(g => g.mammal && g.mammal.id).filter(Boolean) : []));
         // Mark existing entries as guessed where appropriate
         speciesData.forEach(s => { s.isGuessed = guessedIdsFromSet.has(s.id) || !!s.isGuessed; });
         if (Array.isArray(this.guesses)) {
@@ -1241,6 +1242,15 @@ class MammalMysteryGame {
                     });
                 }
             }
+        }
+
+        // Debug: log the final speciesData and guesses to help diagnose missing guessed species
+        console.log('Histogram final speciesData:', speciesData);
+        try {
+            console.log('Guessed IDs (set):', Array.isArray(this.guessedIds) ? this.guessedIds : (this.guessedIds && typeof this.guessedIds.has === 'function' ? [...this.guessedIds] : null));
+            console.log('Guesses array:', this.guesses);
+        } catch (e) {
+            console.warn('Error logging guesses:', e);
         }
         // Sort by score descending (higher = closer)
         const sorted = speciesData.filter(x => x.dist !== null).sort((a, b) => b.dist - a.dist);
@@ -1283,8 +1293,13 @@ class MammalMysteryGame {
             isGuessed: Array.isArray(isGuessedArr) ? !!isGuessedArr[i] : false
         }));
         // Increase left margin for longer labels and move chart right
-        const margin = { top: 40, right: 30, bottom: 40, left: 340 };
-        const width = 1000;
+        // Make width responsive to the modal/container to avoid overflow
+        const maxWidth = 1200;
+        const minWidth = 640;
+        const containerWidth = (container && container.clientWidth) ? container.clientWidth : 1000;
+        const width = Math.min(maxWidth, Math.max(minWidth, containerWidth - 40));
+        // Give a bit more right margin so score labels don't run off the edge
+        const margin = { top: 40, right: 60, bottom: 40, left: Math.max(220, Math.min(360, Math.floor(width * 0.34))) };
         const barHeight = 28;
         const height = data.length * barHeight + margin.top + margin.bottom;
 
@@ -1310,8 +1325,6 @@ class MammalMysteryGame {
         function barColor(d) {
             // Target highlighted in red hues
             if (d.isTarget) return 'rgba(255,99,132,0.85)';
-            // Guessed entries get a distinctive blue tint
-            if (d.isGuessed) return 'rgba(33,150,243,0.85)';
             // Otherwise color by similarity
             if (d.value === 100) return 'rgba(255,99,132,0.7)';
             if (d.value >= 70) return 'rgba(76,175,80,0.7)';
@@ -1330,6 +1343,9 @@ class MammalMysteryGame {
             .attr('width', d => x(d.value) - x(0))
             .attr('height', y.bandwidth())
             .attr('fill', barColor)
+            // Add a blue border for guessed bars while preserving fill colors
+            .attr('stroke', d => d.isGuessed ? 'rgba(33,150,243,0.85)' : 'none')
+            .attr('stroke-width', d => d.isGuessed ? 1.2 : 0)
             .attr('cursor', 'pointer')
             .style('pointer-events', 'all')
             .on('click', function(event, d) {
@@ -1352,7 +1368,7 @@ class MammalMysteryGame {
             .data(data)
             .enter()
             .append('text')
-            .attr('class', 'label')
+            .attr('class', d => d.isGuessed ? 'label guessed-label' : 'label')
             .attr('x', margin.left - 8)
             .attr('y', d => y(d.name) + y.bandwidth() * 0.62) // slightly lower for better alignment
             .attr('text-anchor', 'end')
@@ -1371,17 +1387,24 @@ class MammalMysteryGame {
                 }
             });
 
+            // Ensure guessed labels are colored blue (handled above); no underline needed
+
         // Draw score labels on bars
         svg.selectAll('.score-label')
             .data(data)
             .enter()
             .append('text')
             .attr('class', 'score-label')
-            .attr('x', d => x(d.value) + 6)
+            .attr('x', d => {
+                const rawX = x(d.value) + 6;
+                const maxX = width - margin.right - 12;
+                return rawX > maxX ? maxX : rawX;
+            })
             .attr('y', d => y(d.name) + y.bandwidth() / 2)
             .attr('alignment-baseline', 'middle')
             .attr('font-size', '14px')
             .attr('fill', '#333')
+            .attr('text-anchor', d => (x(d.value) + 6 > width - margin.right - 40) ? 'end' : 'start')
             .text(d => `${d.value}%`);
 
         // Draw x-axis
