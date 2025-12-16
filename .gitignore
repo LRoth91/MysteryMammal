@@ -1,0 +1,32 @@
+# Backup files
+*_backup_*.js
+*.bak
+
+# Test files
+test_*.html
+*_test.*
+
+# Development files
+compare_*.js
+distance_histogram.html
+phylo-example.html
+
+# Sample data
+*_sample.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node modules (if you add any build tools later)
+node_modules/
+
+# Build output (if you add any build process later)
+dist/
+build/

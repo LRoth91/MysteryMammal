@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mammal Mystery - The Phylogenetic Guessing Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Poppins:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦌</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <div class="hero-section">
+                <div class="logo-container">
+                    <object data="mystery-mammal-logo.svg" type="image/svg+xml" class="logo-svg" aria-label="Mammal Mystery">
+                        <img src="mystery-mammal-logo.svg" alt="Mammal Mystery">
+                    </object>
+                </div>
+                
+                <div class="button-container">
+                    <div class="main-grid-buttons">
+                        <button class="btn btn-primary" onclick="showScreen('game-screen')">
+                            Start Game
+                        </button>
+                        <button class="btn btn-primary" onclick="showModal('rules-modal')">
+                            How to Play
+                        </button>
+                        <button class="btn btn-primary" onclick="showScreen('gallery-screen')">
+                            Mammal Gallery
+                        </button>
+                        <button class="btn btn-primary" onclick="showModal('mammal-tree-modal')">
+                            View Mammal Tree
+                        </button>
+                    </div>
+                    <!-- Mammal Tree Modal -->
+                    <div id="mammal-tree-modal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>Evolutionary Tree of Mammals</h2>
+                                <button class="modal-close" onclick="hideModal('mammal-tree-modal')">X</button>
+                            </div>
+                            <div class="modal-body mammal-tree-modal-body">
+                                <div class="mammal-tree-image-container" style="width: 100%; max-width: 700px;">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/0e/An_evolutionary_tree_of_mammals.jpeg" alt="Evolutionary Tree of Mammals" style="width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(45,24,16,0.15);">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="parent">
+                <!-- Left Column: Guesses 1-5 -->
+                <div class="div1">
+                    <div class="guess-container">
+                        <div class="guess" id="try1"></div>
+                        <div class="distance" id="distance1"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try2"></div>
+                        <div class="distance" id="distance2"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try3"></div>
+                        <div class="distance" id="distance3"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try4"></div>
+                        <div class="distance" id="distance4"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try5"></div>
+                        <div class="distance" id="distance5"></div>
+                    </div>
+                </div>
+                
+                <!-- Center: Image Container -->
+                <div class="div2">
+                    <div class="imagecontainer" id="imagecontainer"></div>
+                </div>
+                
+                <!-- Right Column: Guesses 6-10 -->
+                <div class="div3">
+                    <div class="guess-container">
+                        <div class="guess" id="try6"></div>
+                        <div class="distance" id="distance6"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try7"></div>
+                        <div class="distance" id="distance7"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try8"></div>
+                        <div class="distance" id="distance8"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try9"></div>
+                        <div class="distance" id="distance9"></div>
+                    </div>
+                    <div class="guess-container">
+                        <div class="guess" id="try10"></div>
+                        <div class="distance" id="distance10"></div>
+                    </div>
+                </div>
+                
+                <!-- Bottom: Answer Grid -->
+                <div class="grid-container" id="options-grid">
+                    <!-- Mammal buttons will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery Screen -->
+        <div id="gallery-screen" class="screen">
+            <div class="gallery-header">
+                <button class="btn-back" onclick="showScreen('home-screen')">
+                    <span>← Back</span>
+                </button>
+                <h2>Mammal Gallery</h2>
+                <div class="gallery-filters">
+                    <div class="gallery-search">
+                        <input type="text" id="gallery-search" placeholder="Search mammals..." class="search-input">
+                    </div>
+                    <div class="gallery-dropdowns">
+                        <select id="order-filter" class="filter-select">
+                            <option value="">All Orders</option>
+                        </select>
+                        <select id="family-filter" class="filter-select">
+                            <option value="">All Families</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="gallery-content" id="gallery-content">
+                <!-- Gallery items will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-body modal-body--centered">
+                <p class="resultmessage" id="resultMessage"></p>
+                <button id="playAgainBtn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>How to Play</h2>
+                <button class="modal-close" onclick="hideModal('rules-modal')">X</button>
+            </div>
+            <div class="modal-body">
+                <div class="rules-section">
+                    <h3>🎯 Objective</h3>
+                    <p>Guess the mystery mammal in 10 tries or fewer using phylogenetic similarity scores!</p>
+                </div>
+                
+                <div class="rules-section">
+                    <h3>🎮 How to Play</h3>
+                    <ol>
+                        <li>A random mammal is chosen as your target</li>
+                        <li>Select mammals from the grid to make your guesses</li>
+                        <li>Each guess shows a similarity percentage based on evolutionary relationships</li>
+                        <li>Use the similarity scores to narrow down your next guesses</li>
+                        <li>Find the exact match to win!</li>
+                    </ol>
+                </div>
+
+                <div class="rules-section">
+                    <h3>📊 Similarity Scoring</h3>
+                    <div class="scoring-grid">
+                        <div class="score-item high">
+                            <span class="score-color"></span>
+                            <div>
+                                <strong>80-100%</strong>
+                                <p>Very close evolutionary relationship</p>
+                            </div>
+                        </div>
+                        <div class="score-item medium">
+                            <span class="score-color"></span>
+                            <div>
+                                <strong>50-79%</strong>
+                                <p>Moderate evolutionary relationship</p>
+                            </div>
+                        </div>
+                        <div class="score-item low">
+                            <span class="score-color"></span>
+                            <div>
+                                <strong>0-49%</strong>
+                                <p>Distant evolutionary relationship</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rules-section">
+                    <h3>💡 Strategy Tips</h3>
+                    <ul>
+                        <li>Start with mammals from different orders (e.g., primates, carnivores, ungulates)</li>
+                        <li>Use high similarity scores to focus on specific taxonomic groups</li>
+                        <li>Consider habitat, diet, and size similarities</li>
+                        <li>The search function can help you find specific mammals quickly</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-modal" class="modal">
+        <div class="modal-content result-modal">
+            <div class="modal-header">
+                <h2 id="result-modal-title">Game Over</h2>
+                <button class="modal-close" onclick="hideModal('result-modal')">X</button>
+            </div>
+            <div class="modal-body">
+                <div class="result-content" id="result-content">
+                    <!-- Result content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="round-tree-modal" class="modal">
+        <div class="modal-content tree-modal">
+            <div class="modal-header">
+                <h2>Round Tree</h2>
+                <button class="modal-close" onclick="hideModal('round-tree-modal')">X</button>
+            </div>
+            <div class="modal-body">
+                <div class="round-tree-container">
+                    <div class="round-tree-svg" id="round-tree-svg">
+                        <!-- Tree visualization will render here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mammal-info-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="mammal-info-title">Mammal Information</h2>
+                <button class="modal-close" onclick="hideModal('mammal-info-modal')">X</button>
+            </div>
+            <div class="modal-body" id="mammal-info-body">
+                <!-- Mammal info will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function loadDependencies() {
+            const gameScriptPath = 'game_embedded.js';
+            const resources = [
+                {
+                    type: 'script',
+                    name: 'phylojs',
+                    sources: [
+                        '../node_modules/phylojs/lib/dist/phylojs.min.js',
+                        'https://unpkg.com/phylojs@1.12.0/lib/dist/phylojs.min.js'
+                    ]
+                },
+                {
+                    type: 'script',
+                    name: 'underscore',
+                    sources: [
+                        '../node_modules/underscore/underscore-umd-min.js',
+                        'https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js'
+                    ],
+                    afterLoad: () => {
+                        if (typeof window._ !== 'undefined') {
+                            window.__MMG_UNDERSCORE__ = window._;
+                        }
+                    }
+                },
+                {
+                    type: 'script',
+                    name: 'lodash',
+                    sources: [
+                        '../node_modules/lodash/lodash.min.js',
+                        'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js'
+                    ],
+                    afterLoad: () => {
+                        if (typeof window._ !== 'undefined') {
+                            window._$1 = window._;
+                        }
+                        if (typeof window.__MMG_UNDERSCORE__ !== 'undefined') {
+                            window._ = window.__MMG_UNDERSCORE__;
+                        }
+                    }
+                },
+                {
+                    type: 'script',
+                    name: 'phylotree',
+                    sources: [
+                        '../node_modules/phylotree/dist/phylotree.min.js',
+                        'https://unpkg.com/phylotree@2.1.7/dist/phylotree.min.js'
+                    ],
+                    afterLoad: () => {
+                        delete window.__MMG_UNDERSCORE__;
+                    }
+                },
+                {
+                    type: 'style',
+                    name: 'phylotree-css',
+                    sources: [
+                        '../node_modules/phylotree/dist/phylotree.css',
+                        'https://unpkg.com/phylotree@2.1.7/dist/phylotree.css'
+                    ]
+                }
+            ];
+
+            function injectScript(src, onload, onerror) {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = onload;
+                script.onerror = onerror;
+                document.head.appendChild(script);
+            }
+
+            function injectStyle(href, onload, onerror) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = href;
+                link.onload = onload;
+                link.onerror = onerror;
+                document.head.appendChild(link);
+            }
+
+            function loadGame() {
+                if (window._gameLoaded) {
+                    return;
+                }
+                window._gameLoaded = true;
+                const script = document.createElement('script');
+                script.src = gameScriptPath;
+                document.body.appendChild(script);
+            }
+
+            function loadResource(index, sourceIndex) {
+                if (index >= resources.length) {
+                    loadGame();
+                    return;
+                }
+
+                const resource = resources[index];
+                const sources = resource.sources || [];
+                const currentIndex = sourceIndex || 0;
+
+                if (!sources[currentIndex]) {
+                    console.error(`Failed to load ${resource.name}; skipping.`);
+                    loadResource(index + 1, 0);
+                    return;
+                }
+
+                const onSuccess = () => {
+                    if (typeof resource.afterLoad === 'function') {
+                        try {
+                            resource.afterLoad();
+                        } catch (error) {
+                            console.error(`Post-load handler failed for ${resource.name}:`, error);
+                        }
+                    }
+                    loadResource(index + 1, 0);
+                };
+                const onFailure = () => {
+                    if (currentIndex + 1 < sources.length) {
+                        console.warn(`Failed to load ${resource.name} from ${sources[currentIndex]}, trying fallback.`);
+                        loadResource(index, currentIndex + 1);
+                    } else {
+                        console.error(`Failed to load ${resource.name} from all sources.`);
+                        loadResource(index + 1, 0);
+                    }
+                };
+
+                if (resource.type === 'script') {
+                    injectScript(sources[currentIndex], onSuccess, onFailure);
+                } else if (resource.type === 'style') {
+                    injectStyle(sources[currentIndex], onSuccess, onFailure);
+                } else {
+                    loadResource(index + 1, 0);
+                }
+            }
+
+            loadResource(0, 0);
+        })();
+    </script>
+</body>
+</html>
