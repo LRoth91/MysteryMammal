@@ -21,6 +21,11 @@ class PhylogeneticDistanceCalculator {
     this.targetScaleFactor = 0;
     this.distanceCache = new Map();
     this.latestTreeSnapshot = null;
+
+        // Distance transform mode controls how raw distances are turned into "effective" distances
+        // Supported modes: 'linear' (default), 'log' (logarithmic compression that preserves min/max range)
+        this.transformMode = 'linear';
+        this.transformOptions = {};
     }
 
     getCanonicalSpeciesLabel(name) {
@@ -151,6 +156,7 @@ class PhylogeneticDistanceCalculator {
         }
 
         console.log(`Phylogenetic tree ready. Indexed ${leafCount} species after pruning.`);
+        console.log(`Distance transform mode: ${this.transformMode}`);
 
         if (this.pendingTargetSpecies) {
             this.applyTargetSpecies();
@@ -298,6 +304,8 @@ class PhylogeneticDistanceCalculator {
 
         let maxDistance = 0;
         let minPositiveDistance = Number.POSITIVE_INFINITY;
+        let maxPairI = -1;
+        let maxPairJ = -1;
 
         this.distanceCache.clear();
 
@@ -314,6 +322,8 @@ class PhylogeneticDistanceCalculator {
 
                 if (effective > maxDistance) {
                     maxDistance = effective;
+                    maxPairI = i;
+                    maxPairJ = j;
                 }
                 if (effective > 0 && effective < minPositiveDistance) {
                     minPositiveDistance = effective;
@@ -327,6 +337,15 @@ class PhylogeneticDistanceCalculator {
 
         this.maxPairwiseDistance = maxDistance;
         this.minPairwiseDistance = minPositiveDistance;
+        if (maxPairI >= 0 && maxPairJ >= 0) {
+            try {
+                const a = leaves[maxPairI] && leaves[maxPairI].label ? leaves[maxPairI].label : String(maxPairI);
+                const b = leaves[maxPairJ] && leaves[maxPairJ].label ? leaves[maxPairJ].label : String(maxPairJ);
+                console.log(`Distance stats max pair: ${a} ↔ ${b} = ${maxDistance.toFixed(4)}`);
+            } catch (e) {
+                // ignore
+            }
+        }
         if (maxDistance > this.globalMaxPairwiseDistance) {
             this.globalMaxPairwiseDistance = maxDistance;
         }
@@ -344,7 +363,9 @@ class PhylogeneticDistanceCalculator {
 
         const rawDistance = this.distanceToAncestor(node1, mrca) + this.distanceToAncestor(node2, mrca);
         const edgeCount = this.edgeCountToAncestor(node1, mrca) + this.edgeCountToAncestor(node2, mrca);
-        const effectiveDistance = rawDistance;
+        // Apply configured transform (linear by default). This allows logarithmic compression
+        // that preserves the overall min/max scale while compressing larger distances.
+        const effectiveDistance = this.applyDistanceTransform(rawDistance);
 
         return {
             raw: rawDistance,
@@ -403,6 +424,164 @@ class PhylogeneticDistanceCalculator {
         }
 
         return edges;
+    }
+
+    // Apply the configured transform to a raw phylogenetic distance and return an effective distance
+    applyDistanceTransform(rawDistance) {
+        if (!Number.isFinite(rawDistance) || rawDistance <= 0) {
+            return rawDistance;
+        }
+
+        const mode = this.transformMode || 'linear';
+        // Determine min/max baseline for normalization
+        const min = Number.isFinite(this.minPairwiseDistance) ? this.minPairwiseDistance : 0;
+        const max = (Number.isFinite(this.globalMaxPairwiseDistance) && this.globalMaxPairwiseDistance > 0)
+            ? this.globalMaxPairwiseDistance
+            : this.maxPairwiseDistance;
+
+        if (!Number.isFinite(max) || max <= Math.max(0, min)) {
+            return rawDistance;
+        }
+
+        // Linear normalized value in [0,1]
+        const denomLinear = Math.max(1e-12, max - min);
+        const normLinear = Math.max(0, Math.min(1, (rawDistance - min) / denomLinear));
+
+        if (mode === 'linear') {
+            return min + normLinear * (max - min);
+        }
+
+        if (mode === 'log') {
+            // Compute log-normalized value in [0,1]
+            const amin = Math.log1p(Math.max(0, min));
+            const amax = Math.log1p(Math.max(0, max));
+            const a = Math.log1p(Math.max(0, rawDistance));
+            const denomLog = Math.max(1e-12, amax - amin);
+            const normLog = Math.max(0, Math.min(1, (a - amin) / denomLog));
+
+            // Blend linear and log norms to avoid excessive clumping at one end
+            const strength = (typeof this.transformOptions.strength === 'number')
+                ? Math.max(0, Math.min(1, this.transformOptions.strength))
+                : 0.6; // default strength (0 = linear, 1 = pure log)
+
+            const norm = (1 - strength) * normLinear + strength * normLog;
+            return min + norm * (max - min);
+        }
+
+        // Unknown mode -> return raw
+        return rawDistance;
+    }
+
+    setTransformMode(mode) {
+        if (!mode) return;
+        const m = String(mode).toLowerCase();
+        if (m === 'linear' || m === 'log') {
+            this.transformMode = m;
+            // Set a conservative default strength for log mode to avoid collapse if not provided
+            if (m === 'log' && typeof this.transformOptions.strength !== 'number') {
+                this.transformOptions.strength = 0.6;
+            }
+            console.log(`PhyloDistance transform mode set to: ${m} (strength=${this.transformOptions.strength})`);
+            // If the tree is already loaded, clear caches and recompute stats so the new
+            // effective distances and related scaling reflect the mode change.
+            try {
+                this.distanceCache.clear();
+                if (this.activeTree) {
+                    this.computeDistanceStats();
+                    this.computeTargetDistanceStats();
+                    this.refreshActiveTreeSnapshot();
+                }
+            } catch (e) {
+                // ignore errors during recompute
+            }
+        } else {
+            console.warn(`Unknown transform mode: ${mode} - keeping '${this.transformMode}'`);
+        }
+    }
+
+    getTransformMode() {
+        return this.transformMode;
+    }
+
+    setTransformStrength(value) {
+        const v = Number(value);
+        if (!Number.isFinite(v)) {
+            console.warn('Invalid transform strength:', value);
+            return;
+        }
+        this.transformOptions.strength = Math.max(0, Math.min(1, v));
+        console.log('PhyloDistance transform strength set to', this.transformOptions.strength);
+        // recompute stats if tree loaded
+        try {
+            this.distanceCache.clear();
+            if (this.activeTree) {
+                this.computeDistanceStats();
+                this.computeTargetDistanceStats();
+                this.refreshActiveTreeSnapshot();
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // Debug helper: print a small sample of raw vs transformed distances and computed scores
+    debugDistanceDistribution(options = {}) {
+        if (!this.activeTree) {
+            console.warn('Active tree not ready for debugDistanceDistribution');
+            return;
+        }
+
+        const sample = Math.max(1, Math.min(200, Number(options.sample) || 20));
+        const targetMode = !!options.target;
+        const leaves = this.activeTree.leafList;
+        const rows = [];
+
+        if (targetMode && this.currentTargetNode) {
+            for (const leaf of leaves) {
+                if (leaf === this.currentTargetNode) continue;
+                const metrics = this.getDistanceForNodes(this.currentTargetNode, leaf);
+                if (!metrics) continue;
+                const raw = metrics.raw;
+                const effective = metrics.effective;
+                // compute normalized using same logic as distanceToScore
+                const perTargetMin = (this.currentTargetNode && Number.isFinite(this.targetMinPositiveDistance) && this.targetMinPositiveDistance > 0)
+                    ? this.targetMinPositiveDistance
+                    : 0;
+                const maxDistance = Math.max( perTargetMin, this.targetMaxDistance );
+                const clamped = Math.min(effective, maxDistance);
+                const normalized = (maxDistance - perTargetMin) > 0 ? (clamped - perTargetMin) / (maxDistance - perTargetMin) : 0;
+                const score = this.distanceToScore(effective);
+                rows.push({ a: this.currentTargetNode.label || 'target', b: leaf.label || '', raw: raw, effective: effective, normalized: normalized, score: score });
+                if (rows.length >= sample) break;
+            }
+        } else {
+            // pairwise among first N leaves
+            for (let i = 0; i < leaves.length && rows.length < sample; i++) {
+                for (let j = i + 1; j < leaves.length && rows.length < sample; j++) {
+                    const n1 = leaves[i];
+                    const n2 = leaves[j];
+                    const metrics = this.getDistanceForNodes(n1, n2);
+                    if (!metrics) continue;
+                    const raw = metrics.raw;
+                    const effective = metrics.effective;
+                    const perTargetMin = 0;
+                    const baselineMax = Number.isFinite(this.globalMaxPairwiseDistance) && this.globalMaxPairwiseDistance > 0
+                        ? this.globalMaxPairwiseDistance
+                        : this.maxPairwiseDistance;
+                    const maxDistance = baselineMax;
+                    const clamped = Math.min(effective, maxDistance);
+                    const normalized = (maxDistance - perTargetMin) > 0 ? (clamped - perTargetMin) / (maxDistance - perTargetMin) : 0;
+                    const score = this.distanceToScore(effective);
+                    rows.push({ a: n1.label || '', b: n2.label || '', raw: raw, effective: effective, normalized: normalized, score: score });
+                }
+            }
+        }
+
+        try {
+            console.table(rows.slice(0, 200));
+        } catch (e) {
+            console.log(rows.slice(0, 200));
+        }
     }
 
     refreshActiveTreeSnapshot() {
@@ -579,6 +758,8 @@ class PhylogeneticDistanceCalculator {
 
         let maxDistance = 0;
         let minPositiveDistance = Number.POSITIVE_INFINITY;
+        let maxLeafLabel = null;
+        const distances = [];
 
         for (const leaf of leaves) {
             if (leaf === this.currentTargetNode) {
@@ -591,9 +772,13 @@ class PhylogeneticDistanceCalculator {
             }
 
             const effective = metrics.effective;
+            if (Number.isFinite(effective)) {
+                distances.push(effective);
+            }
 
             if (effective > maxDistance) {
                 maxDistance = effective;
+                maxLeafLabel = leaf && leaf.label ? leaf.label : null;
             }
             if (effective > 0 && effective < minPositiveDistance) {
                 minPositiveDistance = effective;
@@ -606,6 +791,10 @@ class PhylogeneticDistanceCalculator {
 
         this.targetMaxDistance = maxDistance;
         this.targetMinPositiveDistance = minPositiveDistance;
+        // (No winsorization cap - revert to original behavior)
+        if (maxLeafLabel) {
+            console.log(`Target distance max leaf: ${maxLeafLabel} = ${maxDistance.toFixed(4)} (target ${this.pendingTargetSpecies})`);
+        }
         const denom = Math.max(1e-6, maxDistance - minPositiveDistance);
         if (maxDistance > minPositiveDistance) {
             this.targetScaleFactor = Math.log(99) / denom;
@@ -666,6 +855,13 @@ class MammalMysteryGame {
         
         // Initialize phylogenetic distance calculator
         this.phyloCalculator = new PhylogeneticDistanceCalculator();
+        // Try the logarithmic distance transform by default for compressed large distances / expanded small distances
+        // Toggle this via `this.phyloCalculator.setTransformMode('linear')` or 'log' as needed for experimentation
+        try {
+            this.phyloCalculator.setTransformMode('log');
+        } catch (e) {
+            // ignore - setTransformMode is best-effort
+        }
 
         // Track whether the post-result action panel has replaced the option grid
         this.postResultModeActive = false;
