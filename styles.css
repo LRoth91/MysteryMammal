@@ -21,6 +21,7 @@
     max-height: 90vh;
     margin: 2rem auto;
     background: var(--surface-color, #f5f0e6);
+
     border-radius: var(--border-radius-large, 8px);
     box-shadow: var(--shadow-medium, 0 4px 20px rgba(45,24,16,0.25));
     padding: 0;
@@ -509,6 +510,15 @@ body {
     visibility: visible;
 }
 
+.distance.neutral {
+    background-color: #ffffff;
+    background-image: url('paper-texture.png');
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+    color: var(--text-primary);
+    visibility: visible;
+}
+
 .distance.yellow {
     background-color: #f4d799;
     background-image: url('paper-texture.png');
@@ -821,7 +831,7 @@ button:active {
 }
 
 .tree-modal {
-    width: min(1100px, 96vw);
+    width: min(780px, 96vw);
     display: flex;
     flex-direction: column;
 }
@@ -1335,6 +1345,43 @@ button:active {
     gap: 0.5rem;
 }
 
+.round-ranking-guesses {
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+/* Round graph rows should be neutral (no rank-based heatmap). */
+.round-ranking-guesses .result-guess {
+    background-color: var(--surface-color);
+    background-image: url('paper-texture.png');
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+    border: 2px solid rgba(44, 85, 48, 0.18);
+    border-left: 2px solid rgba(44, 85, 48, 0.18);
+}
+
+.round-ranking-guesses .result-guess:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-light);
+}
+
+.round-ranking-guesses .result-guess.is-target {
+    background-color: #f6e6a6;
+    border-color: rgba(172, 129, 0, 0.55);
+    box-shadow: 0 0 0 2px rgba(172, 129, 0, 0.75) inset;
+}
+
+.round-ranking-guesses .result-guess.is-guessed {
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.55) inset;
+}
+
+.round-ranking-guesses .result-guess.is-target.is-guessed {
+    background-color: #f6e6a6;
+    border-color: rgba(172, 129, 0, 0.55);
+    box-shadow: 0 0 0 2px rgba(172, 129, 0, 0.75) inset, 0 0 0 4px rgba(21, 101, 192, 0.35) inset;
+}
+
 .result-guess {
     display: flex;
     justify-content: space-between;
@@ -1342,6 +1389,31 @@ button:active {
     padding: 0.75rem 1rem;
     border-radius: var(--border-radius);
     border-left: 4px solid;
+}
+
+/* Result modal: closer/farther/neutral feedback (matches in-game colors) */
+.result-guess.green {
+    background-color: #b8e0b8;
+    background-image: url('paper-texture.png');
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+    border-left: none;
+}
+
+.result-guess.red {
+    background-color: #e8a7a0;
+    background-image: url('paper-texture.png');
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+    border-left: none;
+}
+
+.result-guess.neutral {
+    background-color: #ffffff;
+    background-image: url('paper-texture.png');
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+    border-left: none;
 }
 
 .result-guess.high-similarity,

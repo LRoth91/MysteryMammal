@@ -80,10 +80,10 @@ export class UIRenderer {
                         <strong>Scientific Name:</strong> <em>${mammal.scientific_name}</em>
                     </div>
                     <div class="info-row">
-                        <strong>Family:</strong> ${mammal.family}
+                        <strong>Family:</strong> ${this.formatTaxonLabel(mammal.family)}
                     </div>
                     <div class="info-row">
-                        <strong>Order:</strong> ${mammal.order}
+                        <strong>Order:</strong> ${this.formatTaxonLabel(mammal.order)}
                     </div>
                     <div class="external-links">
                         ${mammal.gbif_id ? `<a href="https://www.gbif.org/species/${mammal.gbif_id}" target="_blank" class="external-link">View on GBIF</a>` : ''}
@@ -210,13 +210,18 @@ export class UIRenderer {
      * Update a guess display slot
      * @param {number} guessNumber 
      * @param {Object} mammal 
-     * @param {number} score 
+     * @param {number|null} rank 
+     * @param {number} totalRanks
+        * @param {number} tieSize
+      * @param {{ isCorrect?: boolean, comparison?: 'green'|'red'|'neutral' }} feedback
      * @param {Function} onHover 
      * @param {Function} onClick 
      */
-    updateGuessDisplay(guessNumber, mammal, score, onHover, onClick) {
+          updateGuessDisplay(guessNumber, mammal, rank, totalRanks, tieSize, feedback, onHover, onClick) {
         const guessElement = document.getElementById(`try${guessNumber}`);
         const distanceElement = document.getElementById(`distance${guessNumber}`);
+          const isCorrect = !!feedback?.isCorrect;
+          const comparison = feedback?.comparison || 'neutral';
         
         if (guessElement) {
             guessElement.innerHTML = '';
@@ -240,26 +245,37 @@ export class UIRenderer {
         }
         
         if (distanceElement) {
-            if (score === 100) {
+            if (isCorrect) {
                 distanceElement.textContent = 'Perfect!';
-            } else if (score !== null && score !== undefined) {
-                distanceElement.textContent = `${score}% match`;
+            } else if (rank !== null && rank !== undefined) {
+                const tie = (typeof tieSize === 'number' && tieSize > 1) ? ` (tied)` : '';
+                distanceElement.textContent = `#${rank}${tie}`;
             } else {
                 distanceElement.textContent = 'No data';
             }
             distanceElement.style.visibility = 'visible';
             
-            distanceElement.classList.remove('green', 'yellow', 'red');
-            if (score === null || score === undefined) {
-                distanceElement.classList.add('yellow');
-            } else if (score >= 70) {
-                distanceElement.classList.add('green');
-            } else if (score >= 40) {
-                distanceElement.classList.add('yellow');
-            } else {
-                distanceElement.classList.add('red');
+            distanceElement.classList.remove('green', 'yellow', 'red', 'neutral');
+            if (comparison === 'green' || comparison === 'red' || comparison === 'neutral') {
+                distanceElement.classList.add(comparison);
             }
         }
+    }
+
+    getRankColorClass(rank, total) {
+        if (rank === 1) return 'green';
+        if (rank === null || rank === undefined) return 'yellow';
+
+        const t = (typeof total === 'number' && total > 0) ? total : 0;
+        if (!t) return 'yellow';
+
+        // Simple bands: top third = green, middle third = yellow, bottom third = red
+        const greenMax = Math.ceil(t / 3);
+        const yellowMax = Math.ceil((2 * t) / 3);
+
+        if (rank <= greenMax) return 'green';
+        if (rank <= yellowMax) return 'yellow';
+        return 'red';
     }
 
     /**
@@ -397,6 +413,39 @@ export class UIRenderer {
             `;
         }
         
+        const EPS = 1e-9;
+        const guessClassForIndex = (index) => {
+            const g = guesses?.[index];
+            if (!g) return 'neutral';
+            if (g.mammal?.id === target.id) return 'perfect-match';
+            if (index <= 0) return 'neutral';
+
+            const prev = guesses?.[index - 1];
+            const prevDistance = prev?.distance;
+            const currentDistance = g?.distance;
+
+            if (!Number.isFinite(prevDistance) || !Number.isFinite(currentDistance)) return 'neutral';
+            if (currentDistance < prevDistance - EPS) return 'green';
+            if (currentDistance > prevDistance + EPS) return 'red';
+            return 'neutral';
+        };
+
+        const guessesHtml = (Array.isArray(guesses) ? guesses : []).map((guess, index) => {
+            const cls = guessClassForIndex(index);
+            const rankText = (guess.mammal?.id === target.id)
+                ? 'Perfect!'
+                : (guess.rank ? `#${guess.rank}${(guess.tieSize && guess.tieSize > 1) ? ' (tied)' : ''}` : '—');
+
+            return `
+                <div class="result-guess ${cls}" 
+                     data-guess-index="${index}" 
+                     style="cursor: pointer;">
+                    <span>${guess.mammal.common_name}</span>
+                    <span>${rankText}</span>
+                </div>
+            `;
+        }).join('');
+
         content.innerHTML += `
             <div class="result-target">
                 <div class="result-target-image info-link" role="button" tabindex="0" id="result-target-image">
@@ -409,8 +458,8 @@ export class UIRenderer {
                         ${target.common_name}
                     </h3>
                     <p><em>${target.scientific_name}</em></p>
-                    <p>Family: ${target.family}</p>
-                    <p>Order: ${target.order}</p>
+                    <p>Family: ${this.formatTaxonLabel(target.family)}</p>
+                    <p>Order: ${this.formatTaxonLabel(target.order)}</p>
                 </div>
             </div>
             
@@ -418,14 +467,7 @@ export class UIRenderer {
             <div class="result-summary">
                 <h4>Your Guesses:</h4>
                 <div class="result-guesses">
-                    ${guesses.map((guess, index) => `
-                        <div class="result-guess ${this.getScoreClass(guess.score)}" 
-                             data-guess-index="${index}" 
-                             style="cursor: pointer;">
-                            <span>${guess.mammal.common_name}</span>
-                            <span>${guess.score}%</span>
-                        </div>
-                    `).join('')}
+                    ${guessesHtml}
                 </div>
             </div>
             ` : ''}
@@ -467,6 +509,14 @@ export class UIRenderer {
                 });
             });
         }
+    }
+
+    getRankClass(rank, totalRanks) {
+        const color = this.getRankColorClass(rank, totalRanks);
+        if (rank === 1) return 'perfect-match';
+        if (color === 'green') return 'close-match';
+        if (color === 'yellow') return 'medium-match';
+        return 'distant-match';
     }
 
     /**

@@ -20,7 +20,8 @@ const CONFIG = {
     DATA_FILE: './mammal_data.json',
     MAX_GUESSES: 10,
     OPTIONS_COUNT: 45,
-    TRANSFORM_MODE: 'log'
+    TRANSFORM_MODE: 'log',
+    DEBUG_DISTANCE_LOGS: false
 };
 
 /**
@@ -37,6 +38,11 @@ export class MammalMysteryGame {
         this.guessedIds = new Set();
         this.optionButtons = new Map();
         this.postResultModeActive = false;
+
+        // Round ranking state (computed once per round)
+        this.roundRanking = [];
+        this.roundRankById = new Map();
+        this.roundMetricsById = new Map();
 
         // Modules
         this.mammalLookup = new MammalLookup();
@@ -65,7 +71,14 @@ export class MammalMysteryGame {
             // Load phylogenetic tree in background
             const allSpeciesNames = this.mammalLookup.getAllScientificNames();
             this.phyloCalculator.loadTree(CONFIG.TREE_FILE, allSpeciesNames)
-                .then(() => console.log('Phylogenetic tree loaded successfully!'))
+                .then(() => {
+                    console.log('Phylogenetic tree loaded successfully!');
+                    // If a round is already in progress and no guesses were made yet,
+                    // refresh the ranking so the whole round uses phylogenetic distances.
+                    if (this.gameState === 'playing' && this.currentTarget && this.guesses.length === 0) {
+                        this.computeRoundRanking();
+                    }
+                })
                 .catch(error => console.warn('Failed to load phylogenetic tree:', error));
 
             // Setup UI
@@ -130,6 +143,10 @@ export class MammalMysteryGame {
         this.optionButtons.clear();
         this.exitPostResultMode();
 
+        this.roundRanking = [];
+        this.roundRankById.clear();
+        this.roundMetricsById.clear();
+
         // Select target and options
         this.currentTarget = this.selectWeightedTarget();
         this.gameOptions = weightedSample(this.mammalLookup.getAll(), CONFIG.OPTIONS_COUNT);
@@ -147,6 +164,9 @@ export class MammalMysteryGame {
                 .filter(Boolean);
             this.phyloCalculator.configureRound(allowedNames, this.currentTarget.scientific_name);
         }
+
+        // Precompute ranking for this round (target vs all options)
+        this.computeRoundRanking();
 
         // Update UI
         this.ui.updateGuessCounter(this.currentGuess, CONFIG.MAX_GUESSES);
@@ -180,12 +200,31 @@ export class MammalMysteryGame {
 
         this.guessedIds.add(mammal.id);
 
-        // Calculate similarity
-        const similarity = this.calculateSimilarity(mammal, this.currentTarget);
+        const rank = this.roundRankById.get(mammal.id) ?? null;
+        const metrics = this.roundMetricsById.get(mammal.id) ?? null;
+
+        const isCorrect = mammal.id === this.currentTarget.id;
+
+        // Two-color feedback: closer (green) vs farther (red) than previous guess.
+        // First guess (or missing data) is neutral.
+        const prevGuess = (this.guesses.length > 0) ? this.guesses[this.guesses.length - 1] : null;
+        const prevDistance = prevGuess?.distance;
+        const currentDistance = metrics?.distance;
+        const EPS = 1e-9;
+        let comparison = 'neutral';
+        if (Number.isFinite(prevDistance) && Number.isFinite(currentDistance)) {
+            if (currentDistance < prevDistance - EPS) comparison = 'green';
+            else if (currentDistance > prevDistance + EPS) comparison = 'red';
+        }
+        if (isCorrect) comparison = 'green';
 
         const guess = {
             mammal,
-            ...similarity,
+            rank,
+            tieSize: metrics?.tieSize ?? 1,
+            totalRanks: Math.max(0, (this.roundRanking.length - 1)) || (CONFIG.OPTIONS_COUNT - 1),
+            distance: metrics?.distance ?? null,
+            source: metrics?.source ?? null,
             guessNumber: this.currentGuess
         };
 
@@ -196,13 +235,16 @@ export class MammalMysteryGame {
         this.ui.updateGuessDisplay(
             this.currentGuess,
             mammal,
-            similarity.score,
+            rank,
+            Math.max(0, (this.roundRanking.length - 1)) || (CONFIG.OPTIONS_COUNT - 1),
+            metrics?.tieSize ?? 1,
+            { isCorrect, comparison },
             (m) => this.ui.showPreview(m),
             (m) => this.ui.showMammalInfo(m)
         );
 
         // Check win condition
-        if (mammal.id === this.currentTarget.id) {
+        if (isCorrect) {
             this.endGame(true);
             return;
         }
@@ -234,7 +276,9 @@ export class MammalMysteryGame {
                 const metrics = this.phyloCalculator.getPhylogeneticDistance(species1, species2);
                 if (metrics !== null) {
                     const score = this.phyloCalculator.distanceToScore(metrics.raw);
-                    console.log(`Phylogenetic: ${species1} ↔ ${species2}: raw=${metrics.raw.toFixed(4)}, score=${score}`);
+                    if (CONFIG.DEBUG_DISTANCE_LOGS) {
+                        console.log(`Phylogenetic: ${species1} ↔ ${species2}: raw=${metrics.raw.toFixed(4)}, score=${score}`);
+                    }
                     return {
                         distance: metrics.effective,
                         rawDistance: metrics.raw,
@@ -249,6 +293,116 @@ export class MammalMysteryGame {
         // Fallback to taxonomic similarity
         const score = calculateTaxonomicScore(mammal1, mammal2);
         return { distance: null, rawDistance: null, edgeCount: null, score, source: 'taxonomic' };
+    }
+
+    /**
+     * Compute a stable per-round ranking (1 = target, then closest -> farthest)
+     * based on phylogenetic distance where available, falling back to taxonomic score.
+     */
+    computeRoundRanking() {
+        this.roundRanking = [];
+        this.roundRankById.clear();
+        this.roundMetricsById.clear();
+
+        if (!this.currentTarget || !Array.isArray(this.gameOptions) || this.gameOptions.length === 0) {
+            return;
+        }
+
+        // Ensure unique mammals by ID
+        const byId = new Map();
+        for (const m of this.gameOptions) {
+            if (m?.id) byId.set(m.id, m);
+        }
+        if (this.currentTarget?.id) byId.set(this.currentTarget.id, this.currentTarget);
+
+        const rows = [];
+        for (const mammal of byId.values()) {
+            if (!mammal) continue;
+
+            if (mammal.id === this.currentTarget.id) {
+                rows.push({
+                    id: mammal.id,
+                    mammal,
+                    distance: 0,
+                    source: 'exact'
+                });
+                continue;
+            }
+
+            const similarity = this.calculateSimilarity(mammal, this.currentTarget);
+
+            // Primary metric: raw phylogenetic distance (no normalization)
+            // Fallback metric: (100 - taxonomic score)
+            let distance = Number.POSITIVE_INFINITY;
+            if (similarity?.source === 'phylogenetic' && Number.isFinite(similarity.rawDistance)) {
+                distance = similarity.rawDistance;
+            } else if (typeof similarity?.score === 'number' && Number.isFinite(similarity.score)) {
+                distance = 100 - similarity.score;
+            }
+
+            rows.push({
+                id: mammal.id,
+                mammal,
+                distance,
+                source: similarity?.source || null
+            });
+        }
+
+        rows.sort((a, b) => {
+            const da = Number.isFinite(a.distance) ? a.distance : Number.POSITIVE_INFINITY;
+            const db = Number.isFinite(b.distance) ? b.distance : Number.POSITIVE_INFINITY;
+            if (da !== db) return da - db;
+            const na = (a.mammal?.common_name || a.mammal?.scientific_name || '').toLowerCase();
+            const nb = (b.mammal?.common_name || b.mammal?.scientific_name || '').toLowerCase();
+            return na.localeCompare(nb);
+        });
+
+        // Keep the target at the top but exclude it from rank numbering.
+        // Closest non-target should be rank 1.
+        const targetIndex = rows.findIndex(r => r?.id === this.currentTarget.id);
+        const targetRow = targetIndex >= 0 ? rows[targetIndex] : null;
+        const others = rows.filter(r => r?.id !== this.currentTarget.id);
+
+        // Assign tie-aware ranks (competition ranking): rank = 1 + count(strictly closer)
+        const EPS = 1e-9;
+        const isEqualDistance = (d1, d2) => {
+            if (!Number.isFinite(d1) || !Number.isFinite(d2)) return false;
+            return Math.abs(d1 - d2) <= EPS;
+        };
+
+        let index = 0;
+        let currentRank = 1;
+        while (index < others.length) {
+            const groupDistance = others[index].distance;
+            let end = index + 1;
+            while (end < others.length && isEqualDistance(others[end].distance, groupDistance)) {
+                end++;
+            }
+
+            const tieSize = end - index;
+            for (let k = index; k < end; k++) {
+                others[k].rank = currentRank;
+                others[k].tieSize = tieSize;
+            }
+
+            index = end;
+            currentRank += tieSize;
+        }
+
+        if (targetRow) {
+            targetRow.rank = null;
+            targetRow.tieSize = 1;
+            this.roundRanking = [targetRow, ...others];
+        } else {
+            this.roundRanking = others;
+        }
+
+        this.roundRanking.forEach((row) => {
+            const rank = row.rank ?? null;
+            const tieSize = row.tieSize ?? 1;
+            this.roundRankById.set(row.id, rank);
+            this.roundMetricsById.set(row.id, { distance: row.distance, source: row.source, tieSize });
+        });
     }
 
     /**
@@ -298,14 +452,11 @@ export class MammalMysteryGame {
 
         container.innerHTML = '';
 
-        this.chartRenderer.renderDistanceHistogram({
-            gameOptions: this.gameOptions,
+        this.chartRenderer.renderRoundRankingList({
+            roundRanking: this.roundRanking,
             target: this.currentTarget,
             guessedIds: this.guessedIds,
-            guesses: this.guesses,
-            getDistance: (s1, s2) => this.phyloCalculator.getPhylogeneticDistance(s1, s2),
-            distanceToScore: (d) => this.phyloCalculator.distanceToScore(d),
-            onBarClick: (id) => {
+            onItemClick: (id) => {
                 const mammal = this.mammalLookup.getById(id);
                 if (mammal) this.ui.showMammalInfo(mammal);
             }
