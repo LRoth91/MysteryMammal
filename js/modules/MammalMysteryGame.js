@@ -454,17 +454,36 @@ export class MammalMysteryGame {
 
             const style = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'style');
             style.id = 'card-flip-styles';
+            // Use scaleX-based flip animation instead of 3D rotateY for better
+            // cross-browser SVG compatibility (Chrome handles perspective() poorly in SVG)
             style.textContent = `
                 @keyframes cardFlip {
-                    0% { transform: perspective(400px) rotateY(0deg); }
-                    50% { transform: perspective(400px) rotateY(180deg); }
-                    100% { transform: perspective(400px) rotateY(360deg); }
+                    0% { 
+                        transform: scaleX(1);
+                        opacity: 1;
+                    }
+                    25% { 
+                        transform: scaleX(0);
+                        opacity: 0.7;
+                    }
+                    50% { 
+                        transform: scaleX(-1);
+                        opacity: 1;
+                    }
+                    75% { 
+                        transform: scaleX(0);
+                        opacity: 0.7;
+                    }
+                    100% { 
+                        transform: scaleX(1);
+                        opacity: 1;
+                    }
                 }
                 .card-flipping {
                     animation: cardFlip 1.6s ease-in-out;
-                    transform-origin: 50% 50%;
-                    transform-box: border-box;
-                    will-change: transform;
+                    transform-origin: center center;
+                    transform-box: fill-box;
+                    will-change: transform, opacity;
                 }
             `;
             svgDoc.documentElement.appendChild(style);

@@ -191,13 +191,27 @@ body {
     filter: drop-shadow(0 4px 12px rgba(44, 85, 48, 0.15));
 }
 
-/* Card flip animation keyframes */
+/* Card flip animation keyframes - using scaleX for better cross-browser SVG compatibility */
 @keyframes cardFlip {
-    0%, 100% {
-        transform: perspective(400px) rotateY(0deg);
+    0% { 
+        transform: scaleX(1);
+        opacity: 1;
     }
-    50% {
-        transform: perspective(400px) rotateY(180deg);
+    25% { 
+        transform: scaleX(0);
+        opacity: 0.7;
+    }
+    50% { 
+        transform: scaleX(-1);
+        opacity: 1;
+    }
+    75% { 
+        transform: scaleX(0);
+        opacity: 0.7;
+    }
+    100% { 
+        transform: scaleX(1);
+        opacity: 1;
     }
 }
 
