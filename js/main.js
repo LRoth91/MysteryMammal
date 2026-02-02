@@ -9,6 +9,7 @@ import { MammalMysteryGame } from './modules/MammalMysteryGame.js';
 
 // Global game instance
 let game = null;
+let initPromise = null;
 
 /**
  * Ensure the game is initialized
@@ -16,12 +17,15 @@ let game = null;
 function ensureGameInitialized() {
     if (!game) {
         game = new MammalMysteryGame();
-        game.init();
+        initPromise = game.init().catch(error => {
+            console.error('Failed to initialize game:', error);
+        });
     }
     return game;
 }
 
 // ==================== Global Functions for HTML ====================
+// Expose these immediately (before init) so onclick handlers work
 
 /**
  * Show a specific screen
@@ -40,7 +44,12 @@ window.showScreen = function(screenId) {
     }
     
     if (screenId === 'game-screen' && g.gameState !== 'playing') {
-        g.startNewGame();
+        // Wait for init to complete before starting game
+        if (initPromise) {
+            initPromise.then(() => g.startNewGame());
+        } else {
+            g.startNewGame();
+        }
     }
 };
 
@@ -87,9 +96,15 @@ Object.defineProperty(window, 'game', {
 
 // ==================== Initialize on DOM Ready ====================
 
+console.log('Main.js loaded - global functions registered');
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureGameInitialized);
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM ready - initializing game');
+        ensureGameInitialized();
+    });
 } else {
+    console.log('DOM already ready - initializing game');
     ensureGameInitialized();
 }
 
