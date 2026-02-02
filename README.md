@@ -2,7 +2,24 @@
 
 A web-based educational game where players guess mystery mammals using phylogenetic similarity scores based on evolutionary relationships.
 
-## 🎮 Play Now
+## 🚀 Quick Start (Development)
+
+**Important:** This app uses ES6 modules and must be served via HTTP (not opened as a file).
+
+```bash
+# Navigate to the project directory
+cd MammalGuessGame
+
+# Start a local server (choose one):
+python -m http.server 8000        # Python
+# OR
+npx http-server -p 8000           # Node.js
+
+# Open your browser to:
+# http://localhost:8000
+```
+
+## 🎮 Play Online
 
 Visit: [https://YOUR-USERNAME.github.io/MammalGuessGame](https://YOUR-USERNAME.github.io/MammalGuessGame)
 

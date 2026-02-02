@@ -3,16 +3,16 @@
  * Main game class that orchestrates all modules
  */
 
-import { PhylogeneticDistanceCalculator } from './modules/PhyloCalculator.js';
+import { PhylogeneticDistanceCalculator } from './PhyloCalculator.js';
 import { 
     loadMammalData, 
     MammalLookup, 
     weightedSample, 
     calculateTaxonomicScore,
     getPrimaryImageUrl 
-} from './modules/MammalData.js';
-import { UIRenderer } from './modules/UIRenderer.js';
-import { ChartRenderer } from './modules/ChartRenderer.js';
+} from './MammalData.js';
+import { UIRenderer } from './UIRenderer.js';
+import { ChartRenderer } from './ChartRenderer.js';
 
 // Configuration
 const CONFIG = {
@@ -460,22 +460,33 @@ export class MammalMysteryGame {
                 @keyframes cardFlip {
                     0% { 
                         transform: scaleX(1);
-                        opacity: 1;
-                    }
-                    25% { 
-                        transform: scaleX(0);
-                        opacity: 0.7;
                     }
                     50% { 
                         transform: scaleX(-1);
-                        opacity: 1;
-                    }
-                    75% { 
-                        transform: scaleX(0);
-                        opacity: 0.7;
                     }
                     100% { 
                         transform: scaleX(1);
+                    }
+                }
+                @keyframes showBack {
+                    0%, 24% { 
+                        opacity: 0;
+                    }
+                    25%, 75% { 
+                        opacity: 1;
+                    }
+                    76%, 100% { 
+                        opacity: 0;
+                    }
+                }
+                @keyframes showFront {
+                    0%, 24% { 
+                        opacity: 1;
+                    }
+                    25%, 75% { 
+                        opacity: 0;
+                    }
+                    76%, 100% { 
                         opacity: 1;
                     }
                 }
@@ -483,7 +494,13 @@ export class MammalMysteryGame {
                     animation: cardFlip 1.6s ease-in-out;
                     transform-origin: center center;
                     transform-box: fill-box;
-                    will-change: transform, opacity;
+                    will-change: transform;
+                }
+                .card-flipping .card-front {
+                    animation: showFront 1.6s ease-in-out;
+                }
+                .card-flipping .card-back {
+                    animation: showBack 1.6s ease-in-out;
                 }
             `;
             svgDoc.documentElement.appendChild(style);
