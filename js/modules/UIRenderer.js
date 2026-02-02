@@ -560,7 +560,7 @@ export class UIRenderer {
             orders.forEach(order => {
                 const option = document.createElement('option');
                 option.value = order;
-                option.textContent = order;
+                option.textContent = this.formatTaxonLabel(order);
                 orderFilter.appendChild(option);
             });
         }
@@ -570,7 +570,7 @@ export class UIRenderer {
             families.forEach(family => {
                 const option = document.createElement('option');
                 option.value = family;
-                option.textContent = family;
+                option.textContent = this.formatTaxonLabel(family);
                 familyFilter.appendChild(option);
             });
         }
@@ -589,7 +589,7 @@ export class UIRenderer {
         families.forEach(family => {
             const option = document.createElement('option');
             option.value = family;
-            option.textContent = family;
+            option.textContent = this.formatTaxonLabel(family);
             familyFilter.appendChild(option);
         });
         
@@ -632,5 +632,23 @@ export class UIRenderer {
                 .filter(card => card.style.display !== 'none');
             section.style.display = visibleCards.length > 0 ? 'block' : 'none';
         });
+    }
+
+    formatTaxonLabel(label) {
+        if (!label || typeof label !== 'string') return '';
+
+        // Dataset values are typically ALL_CAPS; display should be Title Case.
+        // Also handle separators like underscores/hyphens by converting them to spaces.
+        const normalized = label
+            .trim()
+            .replace(/[_-]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
+
+        return normalized
+            .split(' ')
+            .filter(Boolean)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
     }
 }
