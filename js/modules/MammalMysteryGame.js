@@ -462,8 +462,9 @@ export class MammalMysteryGame {
                 }
                 .card-flipping {
                     animation: cardFlip 1.6s ease-in-out;
-                    transform-origin: center;
-                    transform-box: fill-box;
+                    transform-origin: 50% 50%;
+                    transform-box: border-box;
+                    will-change: transform;
                 }
             `;
             svgDoc.documentElement.appendChild(style);
