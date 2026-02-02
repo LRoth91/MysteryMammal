@@ -1,6 +1,6 @@
 # Mammal Mystery - The Phylogenetic Guessing Game
 
-A web-based educational game where players guess mystery mammals using phylogenetic similarity scores based on evolutionary relationships.
+A web-based educational game where players guess mystery mammals using phylogenetic similarity (evolutionary relatedness).
 
 ## 🚀 Quick Start (Development)
 
@@ -27,13 +27,13 @@ Visit: [https://YOUR-USERNAME.github.io/MammalGuessGame](https://YOUR-USERNAME.g
 
 ## 📖 About
 
-Mammal Mystery is an interactive guessing game that teaches players about mammalian evolution and phylogenetic relationships. Players have 10 tries to guess a mystery mammal, receiving similarity scores based on how closely related their guesses are to the target species on the evolutionary tree.
+Mammal Mystery is an interactive guessing game that teaches players about mammalian evolution and phylogenetic relationships. Players have 10 tries to guess a mystery mammal, using phylogenetic similarity feedback to narrow down the target.
 
 ### Features
 
 - **45 Mammal Species** from diverse orders and families
-- **Phylogenetic Scoring** based on real evolutionary relationships
-- **Interactive Visualizations** including distance histograms
+- **Phylogenetic Similarity Feedback** based on evolutionary relationships
+- **Round Summary** showing all species ranked by proximity to the target
 - **Mammal Gallery** with search and filtering by taxonomic groups
 - **Educational Content** about evolutionary trees and relationships
 - **Vintage Typewriter Aesthetic** for a unique gaming experience
@@ -42,21 +42,34 @@ Mammal Mystery is an interactive guessing game that teaches players about mammal
 
 1. Click "Start Game" to begin
 2. Select mammals from the grid to make your guesses
-3. Each guess shows a similarity percentage based on evolutionary distance
-4. Use the similarity scores to narrow down your next guesses
+3. After each guess, you’ll see:
+     - A **rank** (e.g., `#12`) showing how close that guess is to the target compared to the other options
+     - A simple **getting closer / farther** indicator compared to your previous guess
+4. Use that feedback to refine your next guesses
 5. Find the exact match within 10 tries to win!
 
-### Scoring Guide
+Tip: After the round ends, use **View Round Graph** to see every species ranked by proximity (with the target highlighted).
 
-- 🟢 **80-100%**: Very close evolutionary relationship (same family or nearby)
-- 🟡 **50-79%**: Moderate evolutionary relationship (same order)
-- 🔴 **0-49%**: Distant evolutionary relationship (different orders)
+## 🧠 What the Feedback Means (Less Technical)
+
+- Lower rank numbers mean “more similar / more closely related to the target.”
+- The color feedback is relative to your *previous* guess:
+    - **Green** = you got closer
+    - **Red** = you got farther
+    - **Neutral** = first guess (or no comparable data)
+
+## 🔬 How Similarity Is Calculated (More Technical)
+
+Under the hood, the game compares each guessed species to the target using phylogenetic distance information where available (and falls back to taxonomy-based similarity when needed). It then:
+
+- Computes a per-round ordering from closest → farthest
+- Assigns **tie-aware ranks** (so multiple species can share the same rank when distances are equal)
+- Uses “closer/farther” colors by comparing your current guess distance to your previous guess distance
 
 ## 🛠️ Technology
 
 - Pure HTML, CSS, and JavaScript (no build process required)
-- [phylotree.js](https://github.com/veg/phylotree.js/) for tree visualization
-- [D3.js](https://d3js.org/) for interactive distance charts
+- [phylojs](https://www.npmjs.com/package/phylojs) for phylogenetic distance calculations
 - Phylogenetic data from scientific research
 
 ## 📁 Project Structure

@@ -13512,16 +13512,15 @@
     "inaturalist_id": 41595,
     "animalia_slug": "cape-genet",
     "img_urls": [
-      "https://en.wikipedia.org/wiki/Cape_genet#/media/File:Large-spotted_Genet_(Genetta_tigrina)_(17356502041)_(crop).jpg",
       "https://s3.animalia.bio/animals/photos/full/1.25x1/large-spotted-genet-genetta-tigrina-13960930416jpg.webp",
+      "http://commons.wikimedia.org/wiki/Special:FilePath/Large-spotted%20Genet%20%28Genetta%20tigrina%29%20%2817356502041%29%20%28crop%29.jpg",
       "https://s3.animalia.bio/animals/photos/medium/original/1200px-genetta-in-botswanajpg.webp",
       "https://s3.animalia.bio/animals/photos/medium/original/large-spotted-genet-genetta-tigrina-14003997023jpg.webp",
       "https://s3.animalia.bio/animals/photos/full/1.25x1/1200px-large-spotted-genet-genetta-tigrina-17354702372jpg.webp",
       "https://s3.animalia.bio/animals/photos/small/1.25x1/1200px-ginsterkatze-in-maunjpg.webp",
       "https://s3.animalia.bio/animals/photos/small/1.25x1/large-spotted-genet-genetta-tigrina-17168772598jpg.webp",
       "https://s3.animalia.bio/animals/photos/small/1.25x1/large-spotted-genet-genetta-tigrina-17342473946jpg.webp",
-      "https://s3.animalia.bio/animals/photos/small/1.25x1/large-spotted-genet-genetta-tigrina-13984509904jpg.webp",
-      "http://commons.wikimedia.org/wiki/Special:FilePath/Large-spotted%20Genet%20%28Genetta%20tigrina%29%20%2817356502041%29%20%28crop%29.jpg"
+      "https://s3.animalia.bio/animals/photos/small/1.25x1/large-spotted-genet-genetta-tigrina-13984509904jpg.webp"
     ],
     "family_member_count": 22
   },

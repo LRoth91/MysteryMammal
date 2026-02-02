@@ -511,16 +511,7 @@ body {
 }
 
 .distance.neutral {
-    background-color: #ffffff;
-    background-image: url('paper-texture.png');
-    background-repeat: repeat;
-    background-blend-mode: multiply;
-    color: var(--text-primary);
-    visibility: visible;
-}
-
-.distance.yellow {
-    background-color: #f4d799;
+    background-color: var(--surface-color);
     background-image: url('paper-texture.png');
     background-repeat: repeat;
     background-blend-mode: multiply;
@@ -1235,30 +1226,16 @@ button:active {
     line-height: 1.6;
 }
 
-.scoring-grid {
-    display: grid;
-    gap: 1rem;
-    margin-top: 1rem;
+.rules-section a,
+.rules-section a:visited {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
 }
 
-.score-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: var(--border-radius);
-    background: var(--background-color);
-}
-
-.score-item.high .score-color { background: var(--success-color); }
-.score-item.medium .score-color { background: var(--warning-color); }
-.score-item.low .score-color { background: var(--danger-color); }
-
-.score-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    flex-shrink: 0;
+.rules-section a:hover {
+    opacity: 0.85;
 }
 
 /* Result Modal Styles */

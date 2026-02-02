@@ -162,8 +162,14 @@
             </div>
             <div class="modal-body">
                 <div class="rules-section">
+                    <h3>🧬 Did you know?</h3>
+                    <p>Dolphins are more closely related to cows than they are to seals.</p>
+                    <p>Family ties among mammals are often surprising and mysterious. Your job is to dig through the branches of the tree and uncover those hidden relationships.</p>
+                </div>
+
+                <div class="rules-section">
                     <h3>🎯 Objective</h3>
-                    <p>Guess the mystery mammal in 10 tries or fewer using phylogenetic similarity scores!</p>
+                    <p>Guess the mystery mammal in 10 tries or fewer.</p>
                 </div>
                 
                 <div class="rules-section">
@@ -171,44 +177,18 @@
                     <ol>
                         <li>A random mammal is chosen as your target</li>
                         <li>Select mammals from the grid to make your guesses</li>
-                        <li>Each guess shows a similarity percentage based on evolutionary relationships</li>
-                        <li>Use the similarity scores to narrow down your next guesses</li>
+                        <li>After each guess, you’ll see how that guess ranks among all species by proximity (lower is closer)</li>
+                        <li>Each new guess is also marked as <strong>closer</strong> or <strong>farther</strong> compared to your previous guess</li>
                         <li>Find the exact match to win!</li>
+                        <li>At the end of a round, you can view a full list of all species ranked by proximity to the target</li>
                     </ol>
-                </div>
-
-                <div class="rules-section">
-                    <h3>📊 Similarity Scoring</h3>
-                    <div class="scoring-grid">
-                        <div class="score-item high">
-                            <span class="score-color"></span>
-                            <div>
-                                <strong>80-100%</strong>
-                                <p>Very close evolutionary relationship</p>
-                            </div>
-                        </div>
-                        <div class="score-item medium">
-                            <span class="score-color"></span>
-                            <div>
-                                <strong>50-79%</strong>
-                                <p>Moderate evolutionary relationship</p>
-                            </div>
-                        </div>
-                        <div class="score-item low">
-                            <span class="score-color"></span>
-                            <div>
-                                <strong>0-49%</strong>
-                                <p>Distant evolutionary relationship</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="rules-section">
                     <h3>💡 Strategy Tips</h3>
                     <ul>
                         <li>Start with mammals from different orders (e.g., primates, carnivores, ungulates)</li>
-                        <li>Use high similarity scores to focus on specific taxonomic groups</li>
+                        <li>Have a look at the <strong><a href="#" onclick="hideModal('rules-modal'); showModal('mammal-tree-modal'); return false;">Mammal Tree</a></strong> for a helpful overview of major mammal family relationships. Or browse through the <strong><a href="#" onclick="hideModal('rules-modal'); showScreen('gallery-screen'); return false;">Mammal Gallery</a></strong> to familiarize yourself with all the different mammal species out threre. You can access both from the main menu.</li>
                         <li>Consider habitat, diet, and size similarities</li>
                         <li>The search function can help you find specific mammals quickly</li>
                     </ul>
