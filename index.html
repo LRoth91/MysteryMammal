@@ -259,9 +259,9 @@
         </div>
     </div>
 
+    <!-- Load PhyloJS dependency first (required for phylogenetic calculations) -->
     <script>
         (function loadDependencies() {
-            const gameScriptPath = 'game_embedded.js';
             const resources = [
                 {
                     type: 'script',
@@ -269,54 +269,6 @@
                     sources: [
                         '../node_modules/phylojs/lib/dist/phylojs.min.js',
                         'https://unpkg.com/phylojs@1.12.0/lib/dist/phylojs.min.js'
-                    ]
-                },
-                {
-                    type: 'script',
-                    name: 'underscore',
-                    sources: [
-                        '../node_modules/underscore/underscore-umd-min.js',
-                        'https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js'
-                    ],
-                    afterLoad: () => {
-                        if (typeof window._ !== 'undefined') {
-                            window.__MMG_UNDERSCORE__ = window._;
-                        }
-                    }
-                },
-                {
-                    type: 'script',
-                    name: 'lodash',
-                    sources: [
-                        '../node_modules/lodash/lodash.min.js',
-                        'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js'
-                    ],
-                    afterLoad: () => {
-                        if (typeof window._ !== 'undefined') {
-                            window._$1 = window._;
-                        }
-                        if (typeof window.__MMG_UNDERSCORE__ !== 'undefined') {
-                            window._ = window.__MMG_UNDERSCORE__;
-                        }
-                    }
-                },
-                {
-                    type: 'script',
-                    name: 'phylotree',
-                    sources: [
-                        '../node_modules/phylotree/dist/phylotree.min.js',
-                        'https://unpkg.com/phylotree@2.1.7/dist/phylotree.min.js'
-                    ],
-                    afterLoad: () => {
-                        delete window.__MMG_UNDERSCORE__;
-                    }
-                },
-                {
-                    type: 'style',
-                    name: 'phylotree-css',
-                    sources: [
-                        '../node_modules/phylotree/dist/phylotree.css',
-                        'https://unpkg.com/phylotree@2.1.7/dist/phylotree.css'
                     ]
                 }
             ];
@@ -329,22 +281,14 @@
                 document.head.appendChild(script);
             }
 
-            function injectStyle(href, onload, onerror) {
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = href;
-                link.onload = onload;
-                link.onerror = onerror;
-                document.head.appendChild(link);
-            }
-
             function loadGame() {
-                if (window._gameLoaded) {
-                    return;
-                }
+                if (window._gameLoaded) return;
                 window._gameLoaded = true;
+                
+                // Load the main module
                 const script = document.createElement('script');
-                script.src = gameScriptPath;
+                script.type = 'module';
+                script.src = 'js/main.js';
                 document.body.appendChild(script);
             }
 
@@ -364,16 +308,7 @@
                     return;
                 }
 
-                const onSuccess = () => {
-                    if (typeof resource.afterLoad === 'function') {
-                        try {
-                            resource.afterLoad();
-                        } catch (error) {
-                            console.error(`Post-load handler failed for ${resource.name}:`, error);
-                        }
-                    }
-                    loadResource(index + 1, 0);
-                };
+                const onSuccess = () => loadResource(index + 1, 0);
                 const onFailure = () => {
                     if (currentIndex + 1 < sources.length) {
                         console.warn(`Failed to load ${resource.name} from ${sources[currentIndex]}, trying fallback.`);
@@ -384,13 +319,7 @@
                     }
                 };
 
-                if (resource.type === 'script') {
-                    injectScript(sources[currentIndex], onSuccess, onFailure);
-                } else if (resource.type === 'style') {
-                    injectStyle(sources[currentIndex], onSuccess, onFailure);
-                } else {
-                    loadResource(index + 1, 0);
-                }
+                injectScript(sources[currentIndex], onSuccess, onFailure);
             }
 
             loadResource(0, 0);
