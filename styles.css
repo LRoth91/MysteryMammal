@@ -637,6 +637,22 @@ body {
     .grid-container {
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     }
+
+    .rules-section h3 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+    }
+
+    .rules-icon svg {
+        width: 1em;
+        height: 1em;
+        flex: 0 0 1em;
+        vertical-align: middle;
+        display: inline-block;
+        /* fill is controlled via SVG using currentColor */
+    }
 }
 
 /* Grid container button specific styles */
@@ -1215,6 +1231,14 @@ button:active {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+.rules-icon svg {
+    width: 1em;
+    height: 1em;
+    flex: 0 0 1em;
+    vertical-align: middle;
+    display: inline-block;
 }
 
 .rules-section ol, .rules-section ul {
