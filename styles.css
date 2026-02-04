@@ -1225,20 +1225,41 @@ button:active {
     margin-bottom: 2rem;
 }
 
-.rules-section h3 {
-    color: var(--primary-color);
-    margin-bottom: 1rem;
+.rules-heading {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.rules-heading h3 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.3em;
+}
+
+.rules-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .rules-icon svg {
-    width: 1em;
-    height: 1em;
-    flex: 0 0 1em;
-    vertical-align: middle;
-    display: inline-block;
+    width: 2.2em;
+    height: 2.2em;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .rules-heading h3 {
+        font-size: 1.1em;
+    }
+    
+    .rules-icon svg {
+        width: 1.9em;
+        height: 1.9em;
+    }
 }
 
 .rules-section ol, .rules-section ul {
