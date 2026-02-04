@@ -32,13 +32,6 @@ export async function loadMammalData(dataPath = './mammal_data.json') {
 }
 
 /**
- * Clear the mammal data cache
- */
-export function clearMammalCache() {
-    mammalDataCache = null;
-}
-
-/**
  * Get the primary image URL for a mammal
  * @param {Object} mammal - Mammal object
  * @returns {string|null}
@@ -48,18 +41,6 @@ export function getPrimaryImageUrl(mammal) {
         return null;
     }
     return mammal.img_urls.length > 0 ? mammal.img_urls[0] : null;
-}
-
-/**
- * Get all image URLs for a mammal
- * @param {Object} mammal - Mammal object
- * @returns {string[]}
- */
-export function getAllImageUrls(mammal) {
-    if (!mammal || !Array.isArray(mammal.img_urls)) {
-        return [];
-    }
-    return mammal.img_urls;
 }
 
 /**
@@ -191,7 +172,164 @@ export class MammalLookup {
 }
 
 /**
- * Calculate family weight for weighted selection
+ * Get order-level weight for balanced sampling.
+ * Uses log scaling to soften the dominance of very large orders while
+ * still allowing them more representation than very small orders.
+ * 
+ * @param {number} orderSize - Number of species in the order
+ * @returns {number}
+ */
+function getOrderWeight(orderSize) {
+    if (!Number.isFinite(orderSize) || orderSize <= 0) return 1;
+    // Use log scaling: large orders still get more picks, but the advantage is dampened
+    // log(607) ≈ 6.4, log(3) ≈ 1.1, so Rodentia gets ~6x weight vs tiny orders, not 200x
+    return Math.log(orderSize + 1);
+}
+
+/**
+ * Stratified sample from mammal list for balanced order/family representation.
+ * This uses a two-level stratified approach:
+ * 1. Allocate slots across orders using log-scaled weights (large orders get more, but dampened)
+ * 2. Within each order, round-robin through families to ensure family diversity
+ * 3. Within families, random selection
+ * 
+ * @param {Object[]} mammalList - List of mammals to sample from
+ * @param {number} count - Number of samples
+ * @returns {Object[]}
+ */
+export function weightedSample(mammalList, count) {
+    const pool = mammalList.filter(Boolean);
+    const targetCount = Math.min(count, pool.length);
+    
+    if (targetCount <= 0) return [];
+
+    // Group mammals by order
+    const byOrder = new Map();
+    pool.forEach(m => {
+        const order = m.order || 'Unknown';
+        if (!byOrder.has(order)) {
+            byOrder.set(order, []);
+        }
+        byOrder.get(order).push(m);
+    });
+
+    // Calculate order weights based on original pool size
+    const orderWeights = new Map();
+    byOrder.forEach((mammals, order) => {
+        orderWeights.set(order, getOrderWeight(mammals.length));
+    });
+
+    // Build working pools: for each order, group by family for round-robin selection
+    const orderPools = new Map();
+    byOrder.forEach((mammals, order) => {
+        // Group by family within order
+        const byFamily = new Map();
+        mammals.forEach(m => {
+            const family = m.family || 'Unknown';
+            if (!byFamily.has(family)) {
+                byFamily.set(family, []);
+            }
+            byFamily.get(family).push(m);
+        });
+        
+        // Shuffle each family's species list
+        byFamily.forEach((species, family) => {
+            shuffleArray(species);
+        });
+        
+        orderPools.set(order, {
+            families: byFamily,
+            familyKeys: shuffleArray([...byFamily.keys()]),
+            currentFamilyIndex: 0,
+            totalRemaining: mammals.length
+        });
+    });
+
+    const selections = [];
+    const selectedIds = new Set();
+
+    while (selections.length < targetCount) {
+        // Calculate total weight of orders that still have mammals
+        let totalWeight = 0;
+        const activeOrders = [];
+        
+        orderPools.forEach((orderData, order) => {
+            if (orderData.totalRemaining > 0) {
+                const weight = orderWeights.get(order) || 1;
+                totalWeight += weight;
+                activeOrders.push({ order, weight, data: orderData });
+            }
+        });
+
+        if (activeOrders.length === 0) break;
+
+        // Weighted random selection of order
+        let threshold = Math.random() * totalWeight;
+        let selectedOrder = activeOrders[activeOrders.length - 1];
+        
+        for (const item of activeOrders) {
+            threshold -= item.weight;
+            if (threshold <= 0) {
+                selectedOrder = item;
+                break;
+            }
+        }
+
+        const orderData = selectedOrder.data;
+        
+        // Round-robin through families in this order
+        let mammal = null;
+        let attempts = 0;
+        const maxAttempts = orderData.familyKeys.length;
+        
+        while (!mammal && attempts < maxAttempts) {
+            const familyKey = orderData.familyKeys[orderData.currentFamilyIndex];
+            const familyPool = orderData.families.get(familyKey);
+            
+            // Move to next family for next time (round-robin)
+            orderData.currentFamilyIndex = (orderData.currentFamilyIndex + 1) % orderData.familyKeys.length;
+            
+            if (familyPool && familyPool.length > 0) {
+                mammal = familyPool.pop();
+                orderData.totalRemaining--;
+                
+                // Remove family if exhausted
+                if (familyPool.length === 0) {
+                    orderData.families.delete(familyKey);
+                    orderData.familyKeys = orderData.familyKeys.filter(k => k !== familyKey);
+                    if (orderData.familyKeys.length > 0) {
+                        orderData.currentFamilyIndex = orderData.currentFamilyIndex % orderData.familyKeys.length;
+                    }
+                }
+            }
+            
+            attempts++;
+        }
+
+        if (mammal && !selectedIds.has(mammal.id)) {
+            selections.push(mammal);
+            selectedIds.add(mammal.id);
+        }
+    }
+
+    return selections;
+}
+
+/**
+ * Fisher-Yates shuffle (in-place)
+ * @param {Array} array
+ * @returns {Array} - The same array, shuffled
+ */
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+/**
+ * Calculate family weight for weighted selection (legacy/backup)
  * (Smaller families get higher weight)
  * @param {Object} mammal - Mammal object
  * @returns {number}
@@ -208,46 +346,6 @@ export function getFamilyWeight(mammal) {
     const biasPower = 1.35;
     const adjusted = Math.pow(familySize, biasPower);
     return adjusted > 0 ? 1 / adjusted : 1;
-}
-
-/**
- * Weighted random sample from mammal list
- * @param {Object[]} mammalList - List of mammals to sample from
- * @param {number} count - Number of samples
- * @returns {Object[]}
- */
-export function weightedSample(mammalList, count) {
-    const pool = mammalList.filter(Boolean);
-    const weights = pool.map(m => getFamilyWeight(m));
-    const selections = [];
-    const targetCount = Math.min(count, pool.length);
-
-    while (selections.length < targetCount && pool.length > 0) {
-        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-        
-        if (totalWeight <= 0) {
-            selections.push(pool.shift());
-            weights.shift();
-            continue;
-        }
-
-        let threshold = Math.random() * totalWeight;
-        let index = 0;
-        
-        while (index < weights.length && threshold > weights[index]) {
-            threshold -= weights[index];
-            index++;
-        }
-
-        if (index >= pool.length) {
-            index = pool.length - 1;
-        }
-
-        selections.push(pool.splice(index, 1)[0]);
-        weights.splice(index, 1);
-    }
-
-    return selections;
 }
 
 /**

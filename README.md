@@ -77,19 +77,23 @@ Under the hood, the game compares each guessed species to the target using phylo
 ```
 MammalGuessGame/
 ├── index.html              # Main game page
-├── game_embedded.js        # Game logic and functionality
 ├── styles.css              # All styling
-├── mammal_data.json        # Mammal species data
-├── mammals.json            # Alternative data format
-├── PhylotreeMammals.tre    # Phylogenetic tree data
-├── FBD-tree.tre           # Alternative tree format
+├── mammal_data.json        # Mammal species data (750+ species)
+├── FBD-tree.tre            # Phylogenetic tree (Newick format)
 ├── mystery-mammal-logo.svg # Game logo
 ├── *.png                   # Texture images
-└── scripts/               # Utility scripts
-    ├── annotate_family_counts.js
-    ├── check_tree_overlap.js
-    ├── convert_nexus_tree.js
-    └── prune_tree_to_dataset.js
+├── js/
+│   ├── main.js             # Entry point
+│   └── modules/            # ES6 modules
+│       ├── MammalMysteryGame.js  # Main game orchestration
+│       ├── MammalData.js         # Data loading & lookup
+│       ├── PhyloCalculator.js    # Phylogenetic distance calculations
+│       ├── UIRenderer.js         # UI rendering
+│       ├── ChartRenderer.js      # Result charts
+│       └── utils/
+│           └── SpeciesNormalizer.js
+├── files/SVG/              # UI icons
+└── scripts/                # Development utilities (Node.js)
 ```
 
 ## 🚀 Local Development
