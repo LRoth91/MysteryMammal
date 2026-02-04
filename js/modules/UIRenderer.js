@@ -401,16 +401,12 @@ export class UIRenderer {
             title.textContent = 'Congratulations!';
             content.innerHTML = `
                 <div class="result-header">
-                    <p>You found the mystery mammal in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}!</p>
+                    <h4>You found the mystery mammal in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}!</h4>
                 </div>
             `;
         } else {
-            title.textContent = 'Better luck next time!';
-            content.innerHTML = `
-                <div class="result-header">
-                    <p>The Mystery Mammal was…</p>
-                </div>
-            `;
+            title.textContent = 'The Mystery Mammal was…';
+            content.innerHTML = ``;
         }
         
         const EPS = 1e-9;
