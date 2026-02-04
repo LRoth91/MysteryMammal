@@ -554,7 +554,7 @@ export class UIRenderer {
             
             const orderHeader = document.createElement('h3');
             orderHeader.className = 'gallery-order-title';
-            orderHeader.textContent = `Order: ${order}`;
+            orderHeader.textContent = `Order: ${this.formatTaxonLabel(order)}`;
             orderSection.appendChild(orderHeader);
             
             const mammalGrid = document.createElement('div');
